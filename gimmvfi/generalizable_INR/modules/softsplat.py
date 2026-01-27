@@ -263,11 +263,12 @@ def cuda_kernel(strFunction: str, strKernel: str, objVariables: typing.Dict):
 @cupy.memoize(for_each_device=True)
 @torch.compiler.disable()
 def cuda_launch(strKey: str):
+    os.environ["ROCM_HOME"] = "/opt/rocm"
     try:
-        os.environ.setdefault("CUDA_HOME", cupy.cuda.get_cuda_path())
+        os.environ.setdefault("ROCM_HOME", cupy.cuda.get_cuda_path())
     except Exception:
-        if "CUDA_HOME" not in os.environ:
-            raise RuntimeError("'CUDA_HOME' not set, unable to find cuda-toolkit installation.")
+        if "ROCM_HOME" not in os.environ:
+            raise RuntimeError("'ROCM_HOME' not set. Please set /opt/rocm")
     
     strKernel = objCudacache[strKey]["strKernel"]
     strFunction = objCudacache[strKey]["strFunction"]
@@ -275,8 +276,8 @@ def cuda_launch(strKey: str):
     return cupy.RawModule(
         code=strKernel,
         options=(
-            "-I " + os.environ["CUDA_HOME"],
-            "-I " + os.environ["CUDA_HOME"] + "/include",
+            "-I " + os.environ["ROCM_HOME"],
+            "-I " + os.environ["ROCM_HOME"] + "/include",
         ),
     ).get_function(strFunction)
 
@@ -371,6 +372,7 @@ class softsplat_func(torch.autograd.Function):
                 cuda_kernel(
                     "softsplat_out",
                     """
+                #include <cassert>
                 extern "C" __global__ void __launch_bounds__(512) softsplat_out(
                     const int n,
                     const {{type}}* __restrict__ tenIn,
@@ -479,6 +481,7 @@ class softsplat_func(torch.autograd.Function):
                 cuda_kernel(
                     "softsplat_ingrad",
                     """
+                #include <cassert>
                 extern "C" __global__ void __launch_bounds__(512) softsplat_ingrad(
                     const int n,
                     const {{type}}* __restrict__ tenIn,

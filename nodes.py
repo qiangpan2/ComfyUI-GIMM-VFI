@@ -133,6 +133,17 @@ class DownloadAndLoadGIMMVFIModel:
             
         return (model,)
 
+from contextlib import contextmanager
+@contextmanager
+def cudnn_enabled_context(enabled=True):
+    original_state = torch.backends.cudnn.enabled
+    try:
+        torch.backends.cudnn.enabled = enabled
+        yield
+    finally:
+        torch.backends.cudnn.enabled = original_state
+
+
 #region Interpolate
 class GIMMVFI_interpolate:
     @classmethod
@@ -208,8 +219,8 @@ class GIMMVFI_interpolate:
                     i * 1 / interpolation_factor * torch.ones(xs.shape[0]).to(xs.device)#.to(torch.float)
                     for i in range(1, interpolation_factor)
                 ]
-                
-                all_outputs = gimmvfi_model(xs, coord_inputs, t=timesteps, ds_factor=ds_factor)
+                with cudnn_enabled_context(True):
+                    all_outputs = gimmvfi_model(xs, coord_inputs, t=timesteps, ds_factor=ds_factor)
                 out_frames = [padder.unpad(im) for im in all_outputs["imgt_pred"]]
                 out_flowts = [padder.unpad(f) for f in all_outputs["flowt"]]
 
