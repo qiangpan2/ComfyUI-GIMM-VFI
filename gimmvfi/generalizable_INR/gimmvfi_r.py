@@ -164,15 +164,14 @@ class GIMMVFI_R(nn.Module):
         )
 
     def predict_flow(self, f, coord, t, flows):
-        # 光流张量保持 contiguous (用于 grid_sample/warp，不是 Conv2d)
-        raft_flow01 = flows[:, :, 0].detach()
-        raft_flow10 = flows[:, :, 1].detach()
+        raft_flow01 = to_channels_last_4d(flows[:, :, 0].detach())
+        raft_flow10 = to_channels_last_4d(flows[:, :, 1].detach())
 
         # calculate splatting metrics
         weights1, weights2 = self.cal_splatting_weights(raft_flow01, raft_flow10)
         strtype = self.fwarp_type + "-zeroeps"
 
-        # b,c,h,w - 只对进入 cnn_encoder (Conv2d) 的张量使用 channels_last
+        # b,c,h,w - 转换为 channels_last 用于 Conv2d 加速
         pixel_latent_0 = self.cnn_encoder(to_channels_last_4d(f[:, :, 0]))
         pixel_latent_1 = self.cnn_encoder(to_channels_last_4d(f[:, :, 1]))
         pixel_latent = []
@@ -237,13 +236,13 @@ class GIMMVFI_R(nn.Module):
         cur_t: b,1,1,1
         """
         batch_size = img_xs.shape[0]  # b,c,t,h,w
-        # 保持 contiguous (用于 warp/grid_sample，不只是 Conv2d)
-        img0 = 2 * img_xs[:, :, 0] - 1.0
-        img1 = 2 * img_xs[:, :, 1] - 1.0
+        # 转换为 channels_last 用于 Conv2d 加速
+        img0 = to_channels_last_4d(2 * img_xs[:, :, 0] - 1.0)
+        img1 = to_channels_last_4d(2 * img_xs[:, :, 1] - 1.0)
 
         ##################### update the predicted flow #####################
         ##initialize coordinates for looking up
-        lookup_coord = build_coord(img_xs[:, :, 0]).to(
+        lookup_coord = build_coord(to_channels_last_4d(img_xs[:, :, 0])).to(
             img_xs[:, :, 0].device
         )  # H//8,W//8
 
