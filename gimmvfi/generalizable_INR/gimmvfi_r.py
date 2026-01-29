@@ -195,8 +195,9 @@ class GIMMVFI_R(nn.Module):
             tmp_pixel_latent = torch.cat(
                 [tmp_pixel_latent_0, tmp_pixel_latent_1], dim=1
             )
+            # 统一为 contiguous 格式，避免 channels_last 混合问题
             tmp_pixel_latent = tmp_pixel_latent + self.res_conv(
-                torch.cat([pixel_latent_0, pixel_latent_1, tmp_pixel_latent], dim=1)
+                torch.cat([pixel_latent_0.contiguous(), pixel_latent_1.contiguous(), tmp_pixel_latent], dim=1)
             )
             # channels_last 张量需要先转为 contiguous，否则 permute 的 strides 会混乱
             pixel_latent.append(tmp_pixel_latent.contiguous().permute(0, 2, 3, 1))
