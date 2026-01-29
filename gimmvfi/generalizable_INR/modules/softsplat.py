@@ -452,7 +452,8 @@ class softsplat_func(torch.autograd.Function):
 
         self.save_for_backward(tenIn, tenFlow)
 
-        return tenOut
+        # 转换为 channels_last 格式，与 cnn_encoder 输出保持一致
+        return tenOut.to(memory_format=torch.channels_last)
 
     # end
 
@@ -672,6 +673,9 @@ class softsplat_func(torch.autograd.Function):
             )
         # end
 
+        # 转换为 channels_last 格式，保持梯度格式一致
+        if tenIngrad is not None:
+            tenIngrad = tenIngrad.to(memory_format=torch.channels_last)
         return tenIngrad, tenFlowgrad
 
     # end
