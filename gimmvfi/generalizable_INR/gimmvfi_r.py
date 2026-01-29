@@ -31,6 +31,13 @@ from .raft.corr import BidirCorrBlock
 from .modules.softsplat import softsplat
 
 
+def to_channels_last_4d(tensor):
+    """将 4D 张量转换为 channels_last 格式，用于 Conv2d 加速"""
+    if tensor.dim() == 4:
+        return tensor.to(memory_format=torch.channels_last)
+    return tensor
+
+
 class GIMMVFI_R(nn.Module):
     Config = GIMMVFIConfig
 
@@ -157,16 +164,16 @@ class GIMMVFI_R(nn.Module):
         )
 
     def predict_flow(self, f, coord, t, flows):
-        raft_flow01 = flows[:, :, 0].detach()
-        raft_flow10 = flows[:, :, 1].detach()
+        raft_flow01 = to_channels_last_4d(flows[:, :, 0].detach())
+        raft_flow10 = to_channels_last_4d(flows[:, :, 1].detach())
 
         # calculate splatting metrics
         weights1, weights2 = self.cal_splatting_weights(raft_flow01, raft_flow10)
         strtype = self.fwarp_type + "-zeroeps"
 
-        # b,c,h,w
-        pixel_latent_0 = self.cnn_encoder(f[:, :, 0])
-        pixel_latent_1 = self.cnn_encoder(f[:, :, 1])
+        # b,c,h,w - 转换为 channels_last 用于 Conv2d 加速
+        pixel_latent_0 = self.cnn_encoder(to_channels_last_4d(f[:, :, 0]))
+        pixel_latent_1 = self.cnn_encoder(to_channels_last_4d(f[:, :, 1]))
         pixel_latent = []
 
         for i, cur_t in enumerate(t):
@@ -229,12 +236,13 @@ class GIMMVFI_R(nn.Module):
         cur_t: b,1,1,1
         """
         batch_size = img_xs.shape[0]  # b,c,t,h,w
-        img0 = 2 * img_xs[:, :, 0] - 1.0
-        img1 = 2 * img_xs[:, :, 1] - 1.0
+        # 转换为 channels_last 用于 Conv2d 加速
+        img0 = to_channels_last_4d(2 * img_xs[:, :, 0] - 1.0)
+        img1 = to_channels_last_4d(2 * img_xs[:, :, 1] - 1.0)
 
         ##################### update the predicted flow #####################
         ##initialize coordinates for looking up
-        lookup_coord = build_coord(img_xs[:, :, 0]).to(
+        lookup_coord = build_coord(to_channels_last_4d(img_xs[:, :, 0])).to(
             img_xs[:, :, 0].device
         )  # H//8,W//8
 
@@ -348,7 +356,9 @@ class GIMMVFI_R(nn.Module):
             corr_fn,
             preserved_raft_flows,
         ) = self.cal_bidirection_flow(
-            255 * img_xs[:, :, 0], 255 * img_xs[:, :, 1], iters=iters
+            to_channels_last_4d(255 * img_xs[:, :, 0]), 
+            to_channels_last_4d(255 * img_xs[:, :, 1]), 
+            iters=iters
         )
         assert coord is not None
 
