@@ -168,7 +168,8 @@ class GIMMVFI_interpolate:
 
     def interpolate(self, gimmvfi_model, images, ds_factor, interpolation_factor,seed, output_flows=False):
         mm.soft_empty_cache()
-        images = images.permute(0, 3, 1, 2)
+        # Force contiguous format to avoid MIOpen issues with channels_last on AMD GPUs
+        images = images.permute(0, 3, 1, 2).contiguous(memory_format=torch.contiguous_format)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
