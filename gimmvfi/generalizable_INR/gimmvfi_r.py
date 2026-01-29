@@ -164,11 +164,8 @@ class GIMMVFI_R(nn.Module):
         )
 
     def predict_flow(self, f, coord, t, flows):
-        # 光流张量不转换 channels_last，因为:
-        # 1. cal_splatting_weights 入口会转 contiguous (unsqueeze→5D 需要)
-        # 2. softsplat 入口会转 contiguous (CUDA kernel 需要)
-        raft_flow01 = flows[:, :, 0].detach()
-        raft_flow10 = flows[:, :, 1].detach()
+        raft_flow01 = to_channels_last_4d(flows[:, :, 0].detach())
+        raft_flow10 = to_channels_last_4d(flows[:, :, 1].detach())
 
         # calculate splatting metrics
         weights1, weights2 = self.cal_splatting_weights(raft_flow01, raft_flow10)
@@ -245,8 +242,7 @@ class GIMMVFI_R(nn.Module):
 
         ##################### update the predicted flow #####################
         ##initialize coordinates for looking up
-        # build_coord 只访问 img.shape，不需要 channels_last 转换
-        lookup_coord = build_coord(img_xs[:, :, 0]).to(
+        lookup_coord = build_coord(to_channels_last_4d(img_xs[:, :, 0])).to(
             img_xs[:, :, 0].device
         )  # H//8,W//8
 
@@ -458,10 +454,6 @@ class GIMMVFI_R(nn.Module):
         return coord_inputs
 
     def cal_splatting_weights(self, raft_flow01, raft_flow10):
-        # 强制转为 contiguous，因为后续 unsqueeze→5D 不支持 channels_last
-        raft_flow01 = raft_flow01.contiguous(memory_format=torch.contiguous_format)
-        raft_flow10 = raft_flow10.contiguous(memory_format=torch.contiguous_format)
-        
         batch_size = raft_flow01.shape[0]
         raft_flows = torch.cat([raft_flow01, raft_flow10], dim=0)
 
