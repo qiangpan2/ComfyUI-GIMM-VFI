@@ -363,6 +363,10 @@ class softsplat_func(torch.autograd.Function):
     @staticmethod
     @torch.amp.custom_fwd(device_type="cuda", cast_inputs=torch.float32) 
     def forward(self, tenIn, tenFlow):
+        # 强制转为 NCHW contiguous 布局 (CUDA kernel 需要)
+        tenIn = tenIn.contiguous(memory_format=torch.contiguous_format)
+        tenFlow = tenFlow.contiguous(memory_format=torch.contiguous_format)
+        
         tenOut = tenIn.new_zeros(
             [tenIn.shape[0], tenIn.shape[1], tenIn.shape[2], tenIn.shape[3]]
         )
@@ -458,7 +462,8 @@ class softsplat_func(torch.autograd.Function):
     def backward(self, tenOutgrad):
         tenIn, tenFlow = self.saved_tensors
 
-        tenOutgrad = tenOutgrad.contiguous()
+        # 强制转为 NCHW contiguous 布局 (CUDA kernel 需要)
+        tenOutgrad = tenOutgrad.contiguous(memory_format=torch.contiguous_format)
         assert tenOutgrad.is_cuda == True
 
         tenIngrad = (

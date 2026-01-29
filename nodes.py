@@ -112,6 +112,7 @@ class DownloadAndLoadGIMMVFIModel:
             raft_sd = load_torch_file(flow_model_path)
             raft_model.load_state_dict(raft_sd, strict=True)
             raft_model.to(dtype).to(device)
+            raft_model = raft_model.to(memory_format=torch.channels_last)
             flow_estimator = raft_model
         elif "gimmvfi_f" in model:
             model = GIMMVFI_F(dtype, config)
@@ -120,6 +121,7 @@ class DownloadAndLoadGIMMVFIModel:
             flowformer_sd = load_torch_file(flow_model_path)
             flowformer.load_state_dict(flowformer_sd, strict=True)
             flow_estimator = flowformer.to(dtype).to(device)
+            flow_estimator = flow_estimator.to(memory_format=torch.channels_last)
             
        
         sd = load_torch_file(model_path)
@@ -127,6 +129,7 @@ class DownloadAndLoadGIMMVFIModel:
       
         model.flow_estimator = flow_estimator
         model = model.eval().to(dtype).to(device)
+        model = model.to(memory_format=torch.channels_last)
 
         if torch_compile:
             model = torch.compile(model)
@@ -168,7 +171,7 @@ class GIMMVFI_interpolate:
 
     def interpolate(self, gimmvfi_model, images, ds_factor, interpolation_factor,seed, output_flows=False):
         mm.soft_empty_cache()
-        images = images.permute(0, 3, 1, 2)
+        images = images.permute(0, 3, 1, 2).to(memory_format=torch.channels_last)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
