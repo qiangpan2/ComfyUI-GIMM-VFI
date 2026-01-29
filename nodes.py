@@ -28,6 +28,14 @@ log = logging.getLogger(__name__)
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
 
+def convert_to_channels_last(model):
+    """只对 Conv2d 层的 4D 权重应用 channels_last，避免非 4D 张量报错"""
+    for module in model.modules():
+        if isinstance(module, torch.nn.Conv2d):
+            if module.weight is not None and module.weight.dim() == 4:
+                module.weight.data = module.weight.data.to(memory_format=torch.channels_last)
+    return model
+
 
 class DownloadAndLoadGIMMVFIModel:
     @classmethod
@@ -112,7 +120,7 @@ class DownloadAndLoadGIMMVFIModel:
             raft_sd = load_torch_file(flow_model_path)
             raft_model.load_state_dict(raft_sd, strict=True)
             raft_model.to(dtype).to(device)
-            raft_model = raft_model.to(memory_format=torch.channels_last)
+            raft_model = convert_to_channels_last(raft_model)
             flow_estimator = raft_model
         elif "gimmvfi_f" in model:
             model = GIMMVFI_F(dtype, config)
@@ -121,7 +129,7 @@ class DownloadAndLoadGIMMVFIModel:
             flowformer_sd = load_torch_file(flow_model_path)
             flowformer.load_state_dict(flowformer_sd, strict=True)
             flow_estimator = flowformer.to(dtype).to(device)
-            flow_estimator = flow_estimator.to(memory_format=torch.channels_last)
+            flow_estimator = convert_to_channels_last(flow_estimator)
             
        
         sd = load_torch_file(model_path)
@@ -129,7 +137,7 @@ class DownloadAndLoadGIMMVFIModel:
       
         model.flow_estimator = flow_estimator
         model = model.eval().to(dtype).to(device)
-        model = model.to(memory_format=torch.channels_last)
+        model = convert_to_channels_last(model)
 
         if torch_compile:
             model = torch.compile(model)
