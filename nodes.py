@@ -179,7 +179,7 @@ class GIMMVFI_interpolate:
 
     def interpolate(self, gimmvfi_model, images, ds_factor, interpolation_factor,seed, output_flows=False):
         mm.soft_empty_cache()
-        images = images.permute(0, 3, 1, 2).to(memory_format=torch.channels_last)
+        images = images.permute(0, 3, 1, 2)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
