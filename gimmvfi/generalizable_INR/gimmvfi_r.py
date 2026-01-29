@@ -198,7 +198,8 @@ class GIMMVFI_R(nn.Module):
             tmp_pixel_latent = tmp_pixel_latent + self.res_conv(
                 torch.cat([pixel_latent_0, pixel_latent_1, tmp_pixel_latent], dim=1)
             )
-            pixel_latent.append(tmp_pixel_latent.permute(0, 2, 3, 1))
+            # channels_last 张量需要先转为 contiguous，否则 permute 的 strides 会混乱
+            pixel_latent.append(tmp_pixel_latent.contiguous().permute(0, 2, 3, 1))
 
         all_outputs = []
         permute_idx_range = [i for i in range(1, f.ndim - 1)]
