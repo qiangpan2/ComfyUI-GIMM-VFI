@@ -267,6 +267,10 @@ class NewInitDecoder(nn.Module):
         img1 = resize(img1, scale_factor=scale_factor)
         warped_img0 = warp(img0, flow0_in)
         warped_img1 = warp(img1, flow1_in)
+        # 统一转为 contiguous 格式，避免 channels_last 和 contiguous 混合
+        # (img0/img1 可能是 channels_last，warped_img0/img1 是 contiguous)
+        img0 = img0.contiguous(memory_format=torch.contiguous_format)
+        img1 = img1.contiguous(memory_format=torch.contiguous_format)
         f_in = torch.cat([f_in, img0, img1, warped_img0, warped_img1], dim=1)
 
         out = self.convblock(f_in)

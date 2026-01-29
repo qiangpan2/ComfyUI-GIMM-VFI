@@ -17,6 +17,10 @@ backwarp_tenGrid = {}
 
 
 def warp(tenInput, tenFlow):
+    # 强制转为 contiguous，因为 grid_sample 和 permute 对 channels_last 支持不稳定
+    tenInput = tenInput.contiguous(memory_format=torch.contiguous_format)
+    tenFlow = tenFlow.contiguous(memory_format=torch.contiguous_format)
+    
     k = (str(tenFlow.device), str(tenFlow.size()))
     if k not in backwarp_tenGrid:
         tenHorizontal = (
