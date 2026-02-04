@@ -1,12 +1,13 @@
 opencv-python
 numpy
 pillow
+timm
+omegaconf
+yacs
+easydict
+
 # cupy-cuda12x>=13.3.0
 # cupy for ROCm (pre-release)
 --find-links https://pip.cupy.dev/pre
 --pre
 cupy-rocm-7-0
-timm
-omegaconf
-yacs
-easydict
